@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Inactivity Detection with Logging</title>
+    <style>
+        #status {
+            padding: 20px;
+            margin: 20px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+        }
+        .active {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .inactive {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        #logContainer {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            background-color: #f8f9fa;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .timestamp {
+            color: #666;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="status" class="active">User is active</div>
+    <div id="logContainer"></div>
+
+    <script>
+        (function() {
+            const INACTIVE_TIMEOUT = 6000; // 60 seconds
+            let inactivityTimer;
+            let isInactive = false;
+            let lastActiveTime = Date.now();
+            let inactivityStartTime = null;
+            const statusElement = document.getElementById('status');
+            const logContainer = document.getElementById('logContainer');
+
+            // Function to format date for logging
+            function formatDate(date) {
+                return date.toLocaleTimeString('en-US', { 
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    fractionalSecondDigits: 3
+                });
+            }
+
+            // Function to add a log entry
+            function addLogEntry(message) {
+                const now = new Date();
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.innerHTML = `<span class="timestamp">[${formatDate(now)}]</span> ${message}`;
+                logContainer.insertBefore(logEntry, logContainer.firstChild);
+            }
+
+            // Function to calculate duration of inactivity
+            function getInactivityDuration() {
+                if (!inactivityStartTime) return 0;
+                return ((Date.now() - inactivityStartTime) / 1000).toFixed(1);
+            }
+
+            // Function to update the UI
+            function updateStatus(active, reason = '') {
+                const now = Date.now();
+                isInactive = !active;
+                
+                if (active) {
+                    if (inactivityStartTime) {
+                        const inactiveDuration = getInactivityDuration();
+                        addLogEntry(`User became ACTIVE after ${inactiveDuration} seconds of inactivity`);
+                    }
+                    inactivityStartTime = null;
+                    lastActiveTime = now;
+                } else {
+                    inactivityStartTime = now;
+                    addLogEntry(`User became INACTIVE - Reason: ${reason}`);
+                }
+
+                statusElement.textContent = `User is ${active ? 'active' : 'inactive'}`;
+                statusElement.className = active ? 'active' : 'inactive';
+            }
+
+            // Function to handle user becoming active
+            function handleUserActive() {
+                if (isInactive) {
+                    updateStatus(true);
+                }
+                lastActiveTime = Date.now();
+                resetInactivityTimer();
+            }
+
+            // Function to handle user becoming inactive
+            function handleUserInactive(reason) {
+                if (!isInactive) {
+                    updateStatus(false, reason);
+                }
+            }
+
+            // Reset the inactivity timer
+            function resetInactivityTimer() {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    handleUserInactive('No interaction');
+                }, INACTIVE_TIMEOUT);
+            }
+
+            // Initialize activity monitoring
+            function initActivityMonitoring() {
+                // Initial log entry
+                addLogEntry('Activity monitoring started');
+                lastActiveTime = Date.now();
+
+                // Mouse, touch, and keyboard events
+                const events = [
+                    'mousedown', 'mousemove', 'keydown',
+                    'scroll', 'touchstart', 'click',
+                    'contextmenu'
+                ];
+
+                events.forEach(event => {
+                    window.addEventListener(event, handleUserActive, { passive: true });
+                });
+
+                // Page visibility detection
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        handleUserInactive('Tab hidden');
+                    } else {
+                        handleUserActive();
+                    }
+                });
+
+                // Window blur/focus detection
+                window.addEventListener('blur', () => {
+                    handleUserInactive('Window not focused');
+                });
+                window.addEventListener('focus', handleUserActive);
+
+                // Initial timer setup
+                resetInactivityTimer();
+            }
+
+            // Start monitoring when the page loads
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initActivityMonitoring);
+            } else {
+                initActivityMonitoring();
+            }
+
+            // Handle page unload cleanup
+            window.addEventListener('beforeunload', () => {
+                clearTimeout(inactivityTimer);
+                addLogEntry('Activity monitoring stopped');
+            });
+        })();
+    </script>
+</body>
+</html>
