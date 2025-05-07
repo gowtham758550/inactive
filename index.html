@@ -38,21 +38,75 @@
             color: #666;
             margin-right: 10px;
         }
+        .control-panel {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        
+        .control-panel input {
+            padding: 5px;
+            margin-right: 10px;
+            width: 100px;
+        }
+        
+        .control-panel button {
+            padding: 5px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .control-panel button:hover {
+            background-color: #0056b3;
+        }
+        
+        .current-timeout {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
     </style>
 </head>
 <body>
+    <div class="control-panel">
+        <label for="timeoutInput">Set Inactivity Timeout (seconds): </label>
+        <input type="number" id="timeoutInput" min="1" value="60">
+        <button onclick="updateTimeout()">Update</button>
+        <div class="current-timeout" id="currentTimeout">Current timeout: 60 seconds</div>
+    </div>
     <div id="status" class="active">User is active</div>
     <div id="logContainer"></div>
 
     <script>
         (function() {
-            const INACTIVE_TIMEOUT = 6000; // 60 seconds
+            let INACTIVE_TIMEOUT = 60000; // Default 60 seconds
             let inactivityTimer;
             let isInactive = false;
             let lastActiveTime = Date.now();
             let inactivityStartTime = null;
             const statusElement = document.getElementById('status');
             const logContainer = document.getElementById('logContainer');
+            const currentTimeoutElement = document.getElementById('currentTimeout');
+
+            // Function to update the timeout value
+            window.updateTimeout = function() {
+                const input = document.getElementById('timeoutInput');
+                const newTimeoutSeconds = parseInt(input.value, 10);
+                
+                if (newTimeoutSeconds > 0) {
+                    INACTIVE_TIMEOUT = newTimeoutSeconds * 1000; // Convert to milliseconds
+                    currentTimeoutElement.textContent = `Current timeout: ${newTimeoutSeconds} seconds`;
+                    addLogEntry(`Inactivity timeout updated to ${newTimeoutSeconds} seconds`);
+                    resetInactivityTimer(); // Reset the timer with new timeout
+                } else {
+                    alert('Please enter a valid positive number');
+                }
+            };
 
             // Function to format date for logging
             function formatDate(date) {
@@ -117,7 +171,7 @@
                 }
             }
 
-            // Reset the inactivity timer
+            // Reset the inactivity timer with current INACTIVE_TIMEOUT value
             function resetInactivityTimer() {
                 clearTimeout(inactivityTimer);
                 inactivityTimer = setTimeout(() => {
